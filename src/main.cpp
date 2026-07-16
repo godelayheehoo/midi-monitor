@@ -26,8 +26,8 @@ void midiReaderTask(void *pvParameters) {
 
   while (true) {
     // Read all available bytes in the UART buffer
-    while (Serial2.available() > 0) {
-      uint8_t b = Serial2.read();
+    while (MIDI_SERIAL.available() > 0) {
+      uint8_t b = MIDI_SERIAL.read();
       parser->parseByte(b);
     }
     // Small delay to yield CPU and prevent starving lower-priority tasks
@@ -179,10 +179,10 @@ void setup() {
   delay(500);
   Serial.println("\n=== ESP32 MIDI Monitor Starting ===");
 
-  // 2. Initialize Hardware UART2 for MIDI DIN input
-  Serial2.begin(31250, SERIAL_8N1, MIDI_RX_PIN, MIDI_TX_PIN);
-  Serial.printf("MIDI UART2 initialized on RX Pin GPIO %d, speed 31250 baud.\n",
-                MIDI_RX_PIN);
+  // 2. Initialize Hardware UART for MIDI DIN input (no TX pin needed)
+  MIDI_SERIAL.begin(31250, SERIAL_8N1, MIDI_RX_PIN, -1);
+  Serial.printf("MIDI UART%d initialized on RX Pin GPIO %d, speed 31250 baud.\n",
+                MIDI_UART_NUM, MIDI_RX_PIN);
 
   // 3. Connect to Wi-Fi router or fall back to hotspot
   initWiFi();

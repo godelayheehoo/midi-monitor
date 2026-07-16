@@ -77,3 +77,20 @@ To test the web interface, API, or build without being connected to a physical M
 1. Open [include/constants.h](file:///Users/james/projects/midi_monitor/include/constants.h)
 2. Set `#define SIMULATE_MIDI 1`
 3. Compile and upload. The ESP32 will simulate clock signals at 120 BPM and periodic MIDI notes.
+
+### Hardware Wiring
+Connect your MIDI receiver module's serial output to the ESP32:
+- **MIDI RX Pin (`MIDI_RX_PIN`)**: Default is GPIO **16** (connect this to the RX data output pin of your MIDI interface/receiver chip).
+
+### Building & Uploading
+To compile and flash the code to your board using PlatformIO:
+1. Open your terminal in the project directory.
+2. Build and upload the project for your target environment (e.g., `lolin_s2_mini`):
+   ```bash
+   pio run --target upload -e lolin_s2_mini
+   ```
+3. Open the Serial Monitor to view boot status and debug output:
+   ```bash
+   pio device monitor -b 115200
+   ```
+

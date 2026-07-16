@@ -534,6 +534,13 @@
                             <span class="slider"></span>
                         </label>
                     </div>
+                    <div class="filter-item">
+                        <span>Auto-refresh logs</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="auto-refresh" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
                 </div>
 
                 <div class="button-group">
@@ -617,6 +624,7 @@
         const asLastVal = document.getElementById('as-last');
         const filterClocks = document.getElementById('filter-clocks');
         const autoScroll = document.getElementById('auto-scroll');
+        const autoRefresh = document.getElementById('auto-refresh');
         const tbody = document.getElementById('midi-tbody');
         const tableContainer = document.getElementById('table-container');
         const logCountVal = document.getElementById('log-count-val');
@@ -879,11 +887,38 @@
             }
         });
 
-        // Initialize loops
+        // Initialize loops with configurable auto-refresh state persisting in localStorage
+        let statusIntervalId = null;
+        let logsIntervalId = null;
+
+        function updatePolling() {
+            if (statusIntervalId) clearInterval(statusIntervalId);
+            if (logsIntervalId) clearInterval(logsIntervalId);
+
+            if (autoRefresh.checked) {
+                // Poll status and logs every 1000ms (1 second) when enabled
+                statusIntervalId = setInterval(fetchStatus, 1000);
+                logsIntervalId = setInterval(fetchLogs, 1000);
+            }
+        }
+
+        // Load setting from localStorage, default to true (on)
+        const storedAutoRefresh = localStorage.getItem('autoRefreshEnabled');
+        if (storedAutoRefresh !== null) {
+            autoRefresh.checked = (storedAutoRefresh === 'true');
+        } else {
+            autoRefresh.checked = true;
+        }
+
+        autoRefresh.addEventListener('change', () => {
+            localStorage.setItem('autoRefreshEnabled', autoRefresh.checked);
+            updatePolling();
+        });
+
+        // Run initial load
         fetchStatus();
         fetchLogs();
-        setInterval(fetchStatus, 1000);
-        setInterval(fetchLogs, 300);
+        updatePolling();
     </script>
 </body>
 </html>

@@ -50,6 +50,27 @@ Once loaded, the dashboard provides a real-time monitor:
 
 ---
 
+## Screenshots
+
+### 1. Dashboard Top (BPM & Active Sensing)
+![Dashboard Top](assets/IMG_3385.jpeg)
+
+### 2. Dashboard Middle (MIDI Filter & Clear Controls)
+![Dashboard Middle](assets/IMG_3386.jpeg)
+
+### 3. Dashboard Bottom (Wi-Fi Settings & Message Log)
+![Dashboard Bottom](assets/IMG_3387.jpeg)
+
+---
+
+## Build Shots
+
+### Internals of Device
+![Internals of Device](assets/IMG_3384.jpeg)
+
+### External of Device
+![External of Device](assets/IMG_3388.png)
+
 ## Developer / Compilation Setup
 
 This project is built using [PlatformIO](https://platformio.org/).

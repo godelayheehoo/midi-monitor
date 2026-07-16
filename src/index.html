@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIDI Monitor</title>
+    <!-- Premium Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: rgba(17, 24, 39, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --accent-blue: #0ea5e9;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --bpm-pulse-duration: 0.5s;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(14, 165, 233, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.1) 0px, transparent 50%);
+            background-attachment: fixed;
+        }
+
+        header {
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--card-border);
+            backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background-color: rgba(11, 15, 25, 0.5);
+        }
+
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--accent-blue);
+            box-shadow: 0 0 12px var(--accent-blue);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+            background: linear-gradient(to right, #ffffff, var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .connection-badge {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: var(--accent-green);
+            padding: 0.35rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.5rem;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                grid-template-columns: 350px 1fr;
+            }
+        }
+
+        /* Glassmorphic Cards */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .card-title {
+            font-size: 1rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* BPM Pulse Indicator */
+        .bpm-display-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem 0;
+            position: relative;
+        }
+
+        .bpm-pulse-ring {
+            width: 130px;
+            height: 130px;
+            border-radius: 50%;
+            border: 2px solid rgba(14, 165, 233, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .bpm-pulse-ring::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background-color: var(--accent-blue);
+            opacity: 0;
+            z-index: 0;
+        }
+
+        .bpm-pulse-ring.pulsing::before {
+            animation: pulse-wave var(--bpm-pulse-duration) cubic-bezier(0.215, 0.610, 0.355, 1) infinite;
+        }
+
+        .bpm-value {
+            font-size: 3rem;
+            font-weight: 800;
+            z-index: 1;
+            color: #ffffff;
+            line-height: 1;
+            letter-spacing: -0.05em;
+        }
+
+        .bpm-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            z-index: 1;
+            text-transform: uppercase;
+            margin-top: 0.25rem;
+        }
+
+        @keyframes pulse-wave {
+            0% {
+                transform: scale(0.9);
+                opacity: 0.4;
+            }
+            100% {
+                transform: scale(1.3);
+                opacity: 0;
+            }
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .stat-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        /* Action Buttons */
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            border: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-blue);
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);
+        }
+
+        .btn-primary:hover {
+            background-color: #0284c7;
+            box-shadow: 0 4px 16px rgba(14, 165, 233, 0.4);
+        }
+
+        .btn-secondary {
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+        }
+
+        .btn-secondary:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Filters List */
+        .filter-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .filter-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            font-size: 0.85rem;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: .2s;
+            border-radius: 20px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .2s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--accent-blue);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        /* Live Log Section */
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 0.75rem;
+        }
+
+        .log-count {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.06);
+            padding: 0.2rem 0.5rem;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+
+        .log-table-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            max-height: 60vh;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--card-border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            text-align: left;
+        }
+
+        th {
+            position: sticky;
+            top: 0;
+            background-color: #111827;
+            padding: 0.75rem 1rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            border-bottom: 1px solid var(--card-border);
+            z-index: 5;
+        }
+
+        td {
+            padding: 0.65rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            font-family: 'JetBrains Mono', monospace;
+            vertical-align: middle;
+        }
+
+        tr:hover {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        /* Colored Badges */
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+
+        .badge-note-on { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .badge-note-off { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); border: 1px solid rgba(239, 68, 68, 0.3); }
+        .badge-cc { background: rgba(14, 165, 233, 0.15); color: var(--accent-blue); border: 1px solid rgba(14, 165, 233, 0.3); }
+        .badge-rt { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+        .badge-sys { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .badge-unknown { background: rgba(255, 255, 255, 0.06); color: var(--text-muted); }
+
+        .raw-bytes {
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .status-online {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+        }
+        .status-offline {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-logo">
+            <div class="logo-indicator" id="network-pulse"></div>
+            <h1>MIDI Monitor</h1>
+        </div>
+        <div class="connection-badge" id="conn-state">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background-color: var(--accent-green);"></span>
+            Connected
+        </div>
+    </header>
+
+    <div class="container">
+        
+        <!-- Left Sidebar: Controls & Stats -->
+        <aside style="display: flex; flex-direction: column; gap: 1.5rem;">
+            
+            <!-- Clock Stats Card -->
+            <div class="card">
+                <div class="card-title">
+                    MIDI Clock
+                    <div class="status-badge status-offline" id="clock-badge">Offline</div>
+                </div>
+                
+                <div class="bpm-display-container">
+                    <div class="bpm-pulse-ring" id="pulse-ring">
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <span class="bpm-value" id="bpm-val">--</span>
+                            <span class="bpm-label">BPM</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <span class="stat-value" id="clock-count">0</span>
+                        <span class="stat-label">Total Clocks</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-value" id="clock-last">--</span>
+                        <span class="stat-label">Last Clock</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Sensing Card -->
+            <div class="card">
+                <div class="card-title">
+                    Active Sensing
+                    <div class="status-badge status-offline" id="as-badge">Absent</div>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <span class="stat-value" id="as-count">0</span>
+                        <span class="stat-label">Heartbeats</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-value" id="as-last">--</span>
+                        <span class="stat-label">Last Ping</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings & Filters Card -->
+            <div class="card">
+                <div class="card-title">Filters</div>
+                
+                <div class="filter-list">
+                    <div class="filter-item">
+                        <span>Show Timing Clocks</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="filter-clocks">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="filter-item">
+                        <span>Auto-scroll to bottom</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="auto-scroll" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-secondary" id="btn-clear">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/></svg>
+                        Clear Monitor
+                    </button>
+                    <button class="btn btn-primary" id="btn-download">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                        Download JSON
+                    </button>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- Right Main Panel: Live Logging -->
+        <main class="card" style="min-height: 500px;">
+            <div class="log-header">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div class="logo-indicator" style="background-color: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); width: 8px; height: 8px;"></div>
+                    <h2 style="font-size: 1.1rem; font-weight: 700;">Live Traffic Monitor</h2>
+                </div>
+                <span class="log-count" id="log-count-val">0 messages</span>
+            </div>
+
+            <div class="log-table-container" id="table-container">
+                <table id="midi-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;">Index</th>
+                            <th style="width: 120px;">Time (s)</th>
+                            <th style="width: 150px;">Message Type</th>
+                            <th style="width: 80px;">Ch</th>
+                            <th>Raw Bytes (Hex)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="midi-tbody">
+                        <!-- Table rows populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+
+    </div>
+
+    <script>
+        let lastMessageId = -1;
+        let allMessages = [];
+        let pollingTimer = null;
+        let bpmPulsingInterval = null;
+
+        // Elements
+        const connBadge = document.getElementById('conn-state');
+        const clockBadge = document.getElementById('clock-badge');
+        const bpmVal = document.getElementById('bpm-val');
+        const pulseRing = document.getElementById('pulse-ring');
+        const clockCountVal = document.getElementById('clock-count');
+        const clockLastVal = document.getElementById('clock-last');
+        const asBadge = document.getElementById('as-badge');
+        const asCountVal = document.getElementById('as-count');
+        const asLastVal = document.getElementById('as-last');
+        const filterClocks = document.getElementById('filter-clocks');
+        const autoScroll = document.getElementById('auto-scroll');
+        const tbody = document.getElementById('midi-tbody');
+        const tableContainer = document.getElementById('table-container');
+        const logCountVal = document.getElementById('log-count-val');
+        const btnClear = document.getElementById('btn-clear');
+        const btnDownload = document.getElementById('btn-download');
+
+        // Setup Event Listeners
+        filterClocks.addEventListener('change', renderTable);
+        btnClear.addEventListener('click', clearLog);
+        btnDownload.addEventListener('click', downloadLog);
+
+        function updateConnectionState(connected) {
+            if (connected) {
+                connBadge.innerHTML = `<span style="width: 8px; height: 8px; border-radius: 50%; background-color: var(--accent-green);"></span> Connected`;
+                connBadge.style.color = 'var(--accent-green)';
+                connBadge.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+                connBadge.style.background = 'rgba(16, 185, 129, 0.15)';
+            } else {
+                connBadge.innerHTML = `<span style="width: 8px; height: 8px; border-radius: 50%; background-color: var(--accent-red);"></span> Disconnected`;
+                connBadge.style.color = 'var(--accent-red)';
+                connBadge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                connBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+            }
+        }
+
+        async function fetchStatus() {
+            try {
+                const response = await fetch('/api/status');
+                if (!response.ok) throw new Error('API Error');
+                const data = await response.json();
+                
+                updateConnectionState(true);
+
+                // Update Clock Stats
+                if (data.clock_running) {
+                    clockBadge.textContent = 'Active';
+                    clockBadge.className = 'status-badge status-online';
+                    
+                    const bpm = data.estimated_bpm.toFixed(1);
+                    bpmVal.textContent = bpm;
+                    
+                    // Update pulse duration based on BPM: seconds per beat = 60 / BPM
+                    const pulseDuration = (60 / data.estimated_bpm);
+                    document.documentElement.style.setProperty('--bpm-duration', pulseDuration + 's');
+                    pulseRing.classList.add('pulsing');
+                } else {
+                    clockBadge.textContent = 'Offline';
+                    clockBadge.className = 'status-badge status-offline';
+                    bpmVal.textContent = '--';
+                    pulseRing.classList.remove('pulsing');
+                }
+
+                clockCountVal.textContent = data.clock_count;
+                clockLastVal.textContent = data.clock_running ? `${(data.time_since_last_clock_ms / 1000).toFixed(2)}s ago` : 'Offline';
+
+                // Update Active Sensing Stats
+                if (data.active_sensing.is_present) {
+                    asBadge.textContent = 'Active';
+                    asBadge.className = 'status-badge status-online';
+                } else {
+                    asBadge.textContent = 'Absent';
+                    asBadge.className = 'status-badge status-offline';
+                }
+
+                asCountVal.textContent = data.active_sensing.count;
+                asLastVal.textContent = data.active_sensing.count > 0 ? `${(data.active_sensing.time_since_last_ms / 1000).toFixed(1)}s ago` : '--';
+            } catch (e) {
+                updateConnectionState(false);
+                clockBadge.textContent = 'Offline';
+                clockBadge.className = 'status-badge status-offline';
+                asBadge.textContent = 'Offline';
+                asBadge.className = 'status-badge status-offline';
+                bpmVal.textContent = '--';
+                pulseRing.classList.remove('pulsing');
+            }
+        }
+
+        async function fetchLogs() {
+            try {
+                const response = await fetch(`/api/logs?since=${lastMessageId}`);
+                if (!response.ok) throw new Error('API Error');
+                const data = await response.json();
+
+                if (data.messages && data.messages.length > 0) {
+                    // Append new messages
+                    allMessages = allMessages.concat(data.messages);
+                    
+                    // Cap messages local cache at 2000 to keep DOM responsive
+                    if (allMessages.length > 2000) {
+                        allMessages = allMessages.slice(allMessages.length - 2000);
+                    }
+
+                    lastMessageId = data.next_id - 1;
+                    renderTable();
+                }
+            } catch (e) {
+                console.error("Error fetching logs:", e);
+            }
+        }
+
+        function getBadgeClass(type) {
+            const t = type.toLowerCase();
+            if (t.includes('on')) return 'badge-note-on';
+            if (t.includes('off')) return 'badge-note-off';
+            if (t.includes('change') || t.includes('cc')) return 'badge-cc';
+            if (t.includes('clock') || t.includes('start') || t.includes('stop') || t.includes('continue')) return 'badge-rt';
+            if (t.includes('sysex') || t.includes('common')) return 'badge-sys';
+            return 'badge-unknown';
+        }
+
+        function formatRawBytes(rawArray, length) {
+            return rawArray.slice(0, length)
+                .map(b => b.toString(16).toUpperCase().padStart(2, '0'))
+                .join(' ');
+        }
+
+        function renderTable() {
+            const showClocks = filterClocks.checked;
+            const scrollActive = autoScroll.checked;
+
+            // Save scroll position
+            const shouldScroll = scrollActive && (tableContainer.scrollHeight - tableContainer.scrollTop - tableContainer.clientHeight < 50);
+
+            // Filter messages
+            const filtered = allMessages.filter(msg => {
+                if (msg.message_type.toLowerCase() === 'clock') {
+                    return showClocks;
+                }
+                return true;
+            });
+
+            logCountVal.textContent = `${filtered.length} messages`;
+
+            tbody.innerHTML = '';
+            filtered.forEach(msg => {
+                const tr = document.createElement('tr');
+                
+                const tdIndex = document.createElement('td');
+                tdIndex.textContent = msg.message_number;
+                tr.appendChild(tdIndex);
+
+                const tdTime = document.createElement('td');
+                tdTime.textContent = (msg.received_us / 1000000).toFixed(6);
+                tr.appendChild(tdTime);
+
+                const tdType = document.createElement('td');
+                const badge = document.createElement('span');
+                badge.className = `badge ${getBadgeClass(msg.message_type)}`;
+                badge.textContent = msg.message_type;
+                tdType.appendChild(badge);
+                tr.appendChild(tdType);
+
+                const tdChan = document.createElement('td');
+                tdChan.textContent = msg.channel === -1 ? '-' : (msg.channel + 1);
+                tr.appendChild(tdChan);
+
+                const tdBytes = document.createElement('td');
+                tdBytes.className = 'raw-bytes';
+                tdBytes.textContent = formatRawBytes(msg.raw, msg.length);
+                tr.appendChild(tdBytes);
+
+                tbody.appendChild(tr);
+            });
+
+            if (shouldScroll || scrollActive && tbody.children.length > 0) {
+                tableContainer.scrollTop = tableContainer.scrollHeight;
+            }
+        }
+
+        async function clearLog() {
+            if (!confirm('Are you sure you want to clear the logs and reset statistics?')) return;
+            try {
+                const response = await fetch('/api/clear', { method: 'POST' });
+                if (response.ok) {
+                    allMessages = [];
+                    lastMessageId = -1;
+                    renderTable();
+                    fetchStatus();
+                }
+            } catch (e) {
+                alert('Failed to clear log');
+            }
+        }
+
+        function downloadLog() {
+            const showClocks = filterClocks.checked;
+            const filtered = allMessages.filter(msg => {
+                if (msg.message_type.toLowerCase() === 'clock') {
+                    return showClocks;
+                }
+                return true;
+            });
+
+            const exportData = {
+                metadata: {
+                    clock_count: parseInt(clockCountVal.textContent) || 0,
+                    estimated_bpm: parseFloat(bpmVal.textContent) || 0.0,
+                    active_sensing_count: parseInt(asCountVal.textContent) || 0
+                },
+                messages: filtered.map(msg => ({
+                    message_number: msg.message_number,
+                    message_type: msg.message_type,
+                    channel: msg.channel,
+                    received_us: msg.received_us,
+                    raw: msg.raw.slice(0, msg.length)
+                }))
+            };
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `midi_log_${Date.now()}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        // Initialize loops
+        fetchStatus();
+        fetchLogs();
+        setInterval(fetchStatus, 1000);
+        setInterval(fetchLogs, 300);
+    </script>
+</body>
+</html>

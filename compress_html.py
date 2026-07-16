@@ -1,8 +1,9 @@
 import gzip
 import os
 
-html_path = "/Users/james/Documents/PlatformIO/Projects/midi-monitor/src/index.html"
-h_path = "/Users/james/Documents/PlatformIO/Projects/midi-monitor/src/index_html.h"
+current_dir = os.path.dirname(os.path.abspath(__file__))
+html_path = os.path.join(current_dir, "src", "index.html")
+h_path = os.path.join(current_dir, "src", "index_html.h")
 
 print(f"Opening HTML file: {html_path}")
 with open(html_path, 'rb') as f_in:

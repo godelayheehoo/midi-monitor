@@ -443,6 +443,12 @@
             background: rgba(255, 255, 255, 0.06);
             color: var(--text-muted);
         }
+
+        #wifi-form input:focus {
+            border-color: var(--accent-blue);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2);
+        }
     </style>
 </head>
 <body>
@@ -540,6 +546,25 @@
                         Download JSON
                     </button>
                 </div>
+            </div>
+
+            <!-- Wi-Fi Settings Card -->
+            <div class="card" id="wifi-card">
+                <div class="card-title">Wi-Fi Settings</div>
+                <form id="wifi-form" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                        <label for="wifi-ssid" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">Router SSID</label>
+                        <input type="text" id="wifi-ssid" placeholder="Enter network name" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--card-border); border-radius: 8px; padding: 0.5rem; color: var(--text-main); font-size: 0.9rem; outline: none; transition: border-color 0.2s;" required>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                        <label for="wifi-pass" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">Password</label>
+                        <input type="password" id="wifi-pass" placeholder="Enter network password" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--card-border); border-radius: 8px; padding: 0.5rem; color: var(--text-main); font-size: 0.9rem; outline: none; transition: border-color 0.2s;">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="margin-top: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.94 0M12 20h.01"/></svg>
+                        Save &amp; Connect
+                    </button>
+                </form>
             </div>
 
         </aside>
@@ -808,6 +833,51 @@
             downloadAnchor.click();
             downloadAnchor.remove();
         }
+
+        // Wi-Fi Form Submission Handler
+        const wifiForm = document.getElementById('wifi-form');
+        wifiForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const ssid = document.getElementById('wifi-ssid').value;
+            const pass = document.getElementById('wifi-pass').value;
+            
+            if (!confirm(`Save WiFi credentials for "${ssid}" and reboot the MIDI Monitor?`)) return;
+            
+            try {
+                const response = await fetch('/api/wifi', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `ssid=${encodeURIComponent(ssid)}&password=${encodeURIComponent(pass)}`
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    alert(data.message || 'Credentials saved! Rebooting device...');
+                    
+                    // Show a reconnection overlay
+                    document.body.innerHTML = `
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; gap: 1.5rem; padding: 2rem; text-align: center; font-family: 'Outfit', sans-serif; background-color: #0b0f19; color: #f8fafc;">
+                            <div style="width: 24px; height: 24px; border-radius: 50%; background-color: #0ea5e9; box-shadow: 0 0 20px #0ea5e9; margin-bottom: 1rem;"></div>
+                            <h2 style="font-size: 1.8rem; font-weight: 800; background: linear-gradient(to right, #ffffff, #0ea5e9); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Reconnecting MIDI Monitor...</h2>
+                            <p style="color: #94a3b8; max-width: 450px; line-height: 1.6;">The device is rebooting to connect to your Wi-Fi network: <strong>${ssid}</strong>.</p>
+                            <div style="background: rgba(17, 24, 39, 0.7); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 1.25rem; max-width: 500px; text-align: left; margin-top: 1rem;">
+                                <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; color: #ffffff;">Next steps:</h3>
+                                <ul style="margin-left: 1.25rem; color: #94a3b8; font-size: 0.9rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                                    <li>Ensure your phone or computer is connected to the same network (<strong>${ssid}</strong>).</li>
+                                    <li>Wait 10-15 seconds for the ESP32 to boot and connect.</li>
+                                    <li>Navigate back to <a href="http://midi-monitor.local" style="color: #0ea5e9; text-decoration: none; font-weight: 600;">http://midi-monitor.local</a>.</li>
+                                    <li>If connection fails, the device will fall back to its own <strong>MIDI-Monitor</strong> hotspot.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    alert('Failed to save Wi-Fi configuration');
+                }
+            } catch (e) {
+                alert('Error sending Wi-Fi configuration: ' + e.message);
+            }
+        });
 
         // Initialize loops
         fetchStatus();

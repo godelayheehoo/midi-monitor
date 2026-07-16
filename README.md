@@ -53,15 +53,27 @@ Once loaded, the dashboard provides a real-time monitor:
 This project is built using [PlatformIO](https://platformio.org/).
 
 ### Configuring Wi-Fi Credentials
-Open [include/constants.h](file:///Users/james/Documents/PlatformIO/Projects/midi-monitor/include/constants.h) and edit the following values:
-```cpp
-#define WIFI_STA_SSID "Your_WiFi_Name"
-#define WIFI_STA_PASSWORD "Your_WiFi_Password"
-```
-If you leave them blank (`""`), the device will instantly skip trying to connect and boot straight into **Hotspot Mode**.
+
+The project supports two ways to configure Router Mode credentials:
+
+1. **Option A: Static Headers (Recommended for Dev)**
+   - Create a file named `include/credentials.h` (which is ignored by git via `.gitignore`).
+   - Define your credentials in it using the following format:
+     ```cpp
+     #pragma once
+     #define WIFI_STA_SSID "Your_WiFi_Name"
+     #define WIFI_STA_PASSWORD "Your_WiFi_Password"
+     ```
+
+2. **Option B: Fallback Configuration Portal (Recommended for Deployment)**
+   - If `include/credentials.h` is not present, or if `WIFI_STA_SSID` is left empty (`""`), the device will boot up.
+   - If it has saved Wi-Fi credentials in its internal non-volatile flash storage (Preferences), it will connect using those.
+   - If not, it will boot directly into **Hotspot Mode** (AP mode, SSID: `MIDI-Monitor`, password `12345678`).
+   - Connect your device to the hotspot, go to [http://midi-monitor.local](http://midi-monitor.local), and enter your Router SSID and Password in the **Wi-Fi Settings** panel.
+   - The device will save these credentials to non-volatile storage and reboot to connect to your router.
 
 ### Simulation Mode (No Hardware Needed)
 To test the web interface, API, or build without being connected to a physical MIDI input circuit:
-1. Open [include/constants.h](file:///Users/james/Documents/PlatformIO/Projects/midi-monitor/include/constants.h)
+1. Open [include/constants.h](file:///Users/james/projects/midi_monitor/include/constants.h)
 2. Set `#define SIMULATE_MIDI 1`
 3. Compile and upload. The ESP32 will simulate clock signals at 120 BPM and periodic MIDI notes.

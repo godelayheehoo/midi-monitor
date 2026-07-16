@@ -1,6 +1,7 @@
 #include "web_server.h"
 #include "index_html.h"
 #include <WebServer.h>
+#include <Preferences.h>
 
 // Global web server instance on port 80
 static WebServer server(HTTP_PORT);
@@ -198,6 +199,29 @@ void setupWebServer(MidiParser &parser, MidiCircularBuffer &buffer) {
     server.sendContent(""); // Signals end of chunked response
 
     delete[] tempBuffer;
+  });
+
+  // Endpoint to save WiFi credentials from the dashboard portal
+  server.on("/api/wifi", HTTP_POST, []() {
+    if (!server.hasArg("ssid")) {
+      server.send(400, "application/json", "{\"error\":\"Missing SSID\"}");
+      return;
+    }
+    String ssid = server.arg("ssid");
+    String password = server.arg("password");
+
+    // Save to Preferences (NVS Flash)
+    Preferences prefs;
+    prefs.begin("wifi-creds", false); // Open in read-write mode
+    prefs.putString("ssid", ssid);
+    prefs.putString("password", password);
+    prefs.end();
+
+    server.send(200, "application/json", "{\"status\":\"ok\",\"message\":\"WiFi credentials saved. Rebooting to connect...\"}");
+
+    // Wait 1 second before rebooting so response is successfully dispatched
+    delay(1000);
+    ESP.restart();
   });
 
   server.begin();

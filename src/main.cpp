@@ -5,6 +5,12 @@
 #include <Arduino.h>
 #include <ESPmDNS.h>
 #include <WiFi.h>
+#include <Preferences.h>
+
+#if __has_include("credentials.h")
+#include "credentials.h"
+#define HAS_CREDENTIALS_H
+#endif
 
 // Instantiate MIDI Buffer and Parser
 MidiCircularBuffer midiBuffer;
@@ -103,12 +109,31 @@ void simulateMidiTask(void *pvParameters) {
 
 // Wi-Fi initialization function (Station with Access Point fallback)
 void initWiFi() {
-  String staSsid = WIFI_STA_SSID;
+  String staSsid = "";
+  String staPassword = "";
+  bool usingHardcoded = false;
+
+#ifdef HAS_CREDENTIALS_H
+  staSsid = WIFI_STA_SSID;
+  staPassword = WIFI_STA_PASSWORD;
+  if (staSsid.length() > 0) {
+    usingHardcoded = true;
+  }
+#endif
+
+  if (!usingHardcoded) {
+    // Attempt to load from non-volatile storage (Preferences)
+    Preferences prefs;
+    prefs.begin("wifi-creds", true); // Open in read-only mode
+    staSsid = prefs.getString("ssid", "");
+    staPassword = prefs.getString("password", "");
+    prefs.end();
+  }
 
   if (staSsid.length() > 0) {
-    Serial.printf("Attempting to connect to Wi-Fi Router: %s\n", WIFI_STA_SSID);
+    Serial.printf("Attempting to connect to Wi-Fi Router: %s\n", staSsid.c_str());
     WiFi.mode(WIFI_STA);
-    WiFi.begin(WIFI_STA_SSID, WIFI_STA_PASSWORD);
+    WiFi.begin(staSsid.c_str(), staPassword.c_str());
 
     uint32_t startAttemptTime = millis();
     // Wait for connection with a timeout

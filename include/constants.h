@@ -1,10 +1,6 @@
 #pragma once
 
 // Wi-Fi Configuration
-// Fill in your local studio Wi-Fi details for Router Mode.
-// If left blank (""), the device will boot directly into Hotspot Mode.
-#define WIFI_STA_SSID ""
-#define WIFI_STA_PASSWORD ""
 #define WIFI_CONNECTION_TIMEOUT_MS 10000
 
 // Hotspot Mode credentials (if Router Mode fails or isn't configured)

@@ -268,6 +268,12 @@
             background-color: rgba(255, 255, 255, 0.1);
         }
 
+        .btn-success {
+            background-color: var(--accent-green) !important;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2) !important;
+            color: #ffffff !important;
+        }
+
         /* Filters List */
         .filter-list {
             display: flex;
@@ -609,6 +615,10 @@
                 <div class="channel-grid" id="channel-grid">
                     <!-- Javascript will generate channels 1-16 here -->
                 </div>
+                <button class="btn btn-primary" id="btn-save-channels" style="margin-top: 0.5rem; width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.3s ease;">
+                    <svg class="save-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s ease;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    <span class="save-text">Save Filter State</span>
+                </button>
             </div>
 
             <!-- Wi-Fi Settings Card -->
@@ -687,20 +697,23 @@
         const logCountVal = document.getElementById('log-count-val');
         const btnClear = document.getElementById('btn-clear');
         const btnDownload = document.getElementById('btn-download');
+        const btnSaveChannels = document.getElementById('btn-save-channels');
 
         // Setup Event Listeners
         filterClocks.addEventListener('change', renderTable);
         btnClear.addEventListener('click', clearLog);
         btnDownload.addEventListener('click', downloadLog);
+        btnSaveChannels.addEventListener('click', saveSettings);
 
         // Channel filter generation
         function initChannelGrid() {
             const grid = document.getElementById('channel-grid');
             const toggleAllBtn = document.getElementById('btn-toggle-all-channels');
             
+            grid.innerHTML = ''; // Clear any existing buttons
             for (let i = 0; i < 16; i++) {
                 const btn = document.createElement('button');
-                btn.className = 'channel-btn';
+                btn.className = monitoredChannels[i] ? 'channel-btn' : 'channel-btn inactive';
                 btn.textContent = i + 1;
                 btn.dataset.channel = i;
                 btn.addEventListener('click', () => {
@@ -988,6 +1001,68 @@
             }
         });
 
+        async function loadSettings() {
+            try {
+                const response = await fetch('/api/settings');
+                if (response.ok) {
+                    const data = await response.json();
+                    const mask = data.channels;
+                    for (let i = 0; i < 16; i++) {
+                        monitoredChannels[i] = ((mask >> i) & 1) === 1;
+                    }
+                    if (data.show_clocks !== undefined) {
+                        filterClocks.checked = data.show_clocks;
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to load settings from device:", e);
+            }
+        }
+
+        async function saveSettings() {
+            let mask = 0;
+            for (let i = 0; i < 16; i++) {
+                if (monitoredChannels[i]) {
+                    mask |= (1 << i);
+                }
+            }
+
+            const showClocks = filterClocks.checked;
+            
+            btnSaveChannels.disabled = true;
+            const originalHtml = btnSaveChannels.innerHTML;
+            btnSaveChannels.querySelector('.save-text').textContent = 'Saving...';
+            btnSaveChannels.querySelector('.save-icon').style.transform = 'rotate(180deg)';
+
+            try {
+                const response = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `channels=${mask}&show_clocks=${showClocks}`
+                });
+
+                if (response.ok) {
+                    btnSaveChannels.classList.add('btn-success');
+                    btnSaveChannels.classList.remove('btn-primary');
+                    btnSaveChannels.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span>Saved!</span>
+                    `;
+                } else {
+                    alert('Failed to save settings');
+                }
+            } catch (e) {
+                alert('Error saving settings: ' + e.message);
+            } finally {
+                setTimeout(() => {
+                    btnSaveChannels.disabled = false;
+                    btnSaveChannels.classList.remove('btn-success');
+                    btnSaveChannels.classList.add('btn-primary');
+                    btnSaveChannels.innerHTML = originalHtml;
+                }, 2000);
+            }
+        }
+
         // Initialize loops with configurable auto-refresh state persisting in localStorage
         let statusIntervalId = null;
         let logsIntervalId = null;
@@ -1017,10 +1092,13 @@
         });
 
         // Run initial load
-        initChannelGrid();
-        fetchStatus();
-        fetchLogs();
-        updatePolling();
+        (async () => {
+            await loadSettings();
+            initChannelGrid();
+            fetchStatus();
+            fetchLogs();
+            updatePolling();
+        })();
     </script>
 </body>
 </html>

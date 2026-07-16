@@ -224,6 +224,42 @@ void setupWebServer(MidiParser &parser, MidiCircularBuffer &buffer) {
     ESP.restart();
   });
 
+  // Retrieve saved MIDI filter settings
+  server.on("/api/settings", HTTP_GET, []() {
+    Preferences prefs;
+    prefs.begin("midi-settings", true); // Open in read-only mode
+    uint16_t channels = prefs.getUShort("channels", 0xFFFF); // Default all channels enabled
+    bool showClocks = prefs.getBool("show_clocks", false);    // Default false
+    prefs.end();
+
+    String json = "{";
+    json += "\"channels\":" + String(channels) + ",";
+    json += "\"show_clocks\":" + String(showClocks ? "true" : "false");
+    json += "}";
+    server.send(200, "application/json", json);
+  });
+
+  // Save MIDI filter settings
+  server.on("/api/settings", HTTP_POST, []() {
+    uint16_t channels = 0xFFFF;
+    bool showClocks = false;
+
+    if (server.hasArg("channels")) {
+      channels = (uint16_t)server.arg("channels").toInt();
+    }
+    if (server.hasArg("show_clocks")) {
+      showClocks = server.arg("show_clocks") == "true";
+    }
+
+    Preferences prefs;
+    prefs.begin("midi-settings", false); // Open in read-write mode
+    prefs.putUShort("channels", channels);
+    prefs.putBool("show_clocks", showClocks);
+    prefs.end();
+
+    server.send(200, "application/json", "{\"status\":\"ok\"}");
+  });
+
   server.begin();
   Serial.println("Web server listening on port 80");
 }

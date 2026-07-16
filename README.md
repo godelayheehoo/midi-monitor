@@ -41,8 +41,10 @@ Once loaded, the dashboard provides a real-time monitor:
 * **Clock Status Panel**: Displays total MIDI Clock messages, current estimated BPM (smoothed via moving average), time elapsed since the last clock, and whether the clock is active.
 * **BPM Beat Light**: A circular pulse indicator that beats in perfect time with the incoming MIDI Clock tempo.
 * **Active Sensing Monitor**: Displays a badge indicating whether Active Sensing (`0xFE` heartbeat) is currently being sent by your controller (updates in real-time).
+* **Channel Filter Grid**: An interactive 1-16 grid allowing you to toggle visibility on and off for specific MIDI channels (or toggle all channels simultaneously).
 * **Live Message Log**: Lists all incoming MIDI messages. You can toggle whether to show timing clock events in the log.
 * **Controls**:
+  * **Save Filter State**: Saves your active channel grid layout and timing clock visibility preferences directly to the ESP32's non-volatile memory (NVS). The settings are recalled automatically the next time the device starts up.
   * **Clear Log**: Wipes the message buffer and resets timing/clock stats.
   * **Download Log**: Saves the current log of messages in a JSON format matching the schema for further timing analysis.
 

@@ -257,6 +257,10 @@ void setupWebServer(MidiParser &parser, MidiCircularBuffer &buffer) {
     prefs.putBool("show_clocks", showClocks);
     prefs.end();
 
+    if (gParser) {
+      gParser->loadSettings();
+    }
+
     server.send(200, "application/json", "{\"status\":\"ok\"}");
   });
 

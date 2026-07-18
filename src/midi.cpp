@@ -1,4 +1,5 @@
 #include "midi.h"
+#include <Preferences.h>
 
 // ==========================================
 // MidiCircularBuffer Implementation
@@ -64,9 +65,20 @@ void MidiCircularBuffer::clear() {
 // ==========================================
 
 MidiParser::MidiParser(MidiCircularBuffer& buffer)
-    : logBuffer(buffer) {
+    : logBuffer(buffer), enabledChannelsMask(0xFFFF), showClocks(false) {
     resetParserState();
     resetStats();
+    loadSettings();
+}
+
+void MidiParser::loadSettings() {
+    Preferences prefs;
+    prefs.begin("midi-settings", true); // Open in read-only mode
+    enabledChannelsMask = prefs.getUShort("channels", 0xFFFF);
+    showClocks = prefs.getBool("show_clocks", false);
+    prefs.end();
+    Serial.printf("MIDI Parser settings loaded: channels mask = 0x%04X, show clocks = %s\n",
+                  (uint16_t)enabledChannelsMask, showClocks ? "true" : "false");
 }
 
 void MidiParser::resetParserState() {
@@ -126,11 +138,13 @@ void MidiParser::handleRealTime(uint8_t b) {
         lastClockUs = currentUs;
         lastClockSystemMs = nowMs;
         
-        // Log Clock message (will be pushed to buffer, and UI filters it dynamically)
-        uint8_t rawByte = 0xF8;
-        statsMtx.unlock(); // Temporarily unlock to call emitMessage
-        emitMessage("Clock", -1, &rawByte, 1);
-        statsMtx.lock();
+        // Log Clock message only if showClocks is true
+        if (showClocks) {
+            uint8_t rawByte = 0xF8;
+            statsMtx.unlock(); // Temporarily unlock to call emitMessage
+            emitMessage("Clock", -1, &rawByte, 1);
+            statsMtx.lock();
+        }
         
     } else if (b == 0xFE) { // Active Sensing
         activeSensingCount++;
@@ -291,7 +305,15 @@ void MidiParser::parseByte(uint8_t b) {
             else if (type == 0xD0) typeName = "Channel Aftertouch";
             else if (type == 0xE0) typeName = "Pitch Bend";
             
-            emitMessage(typeName, channel, fullMessage, copyLen + 1);
+            // Only log if the channel is enabled
+            bool channelEnabled = true;
+            if (channel >= 0 && channel < 16) {
+                channelEnabled = ((enabledChannelsMask >> channel) & 1) == 1;
+            }
+            
+            if (channelEnabled) {
+                emitMessage(typeName, channel, fullMessage, copyLen + 1);
+            }
             
             // Clear currentStatus but keep runningStatus for subsequent messages
             currentStatus = 0;

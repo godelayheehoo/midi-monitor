@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <mutex>
+#include <atomic>
 #include "constants.h"
 
 // MIDI message structure stored in circular buffer
@@ -37,6 +38,9 @@ class MidiParser {
 public:
     MidiParser(MidiCircularBuffer& buffer);
 
+    // Loads settings from NVS (Preferences)
+    void loadSettings();
+
     // Parses a single byte from the MIDI stream.
     // Pushes completed messages to the circular buffer.
     void parseByte(uint8_t b);
@@ -54,6 +58,10 @@ private:
     void resetParserState();
 
     MidiCircularBuffer& logBuffer;
+
+    // Filter Settings (atomic for thread safety)
+    std::atomic<uint16_t> enabledChannelsMask;
+    std::atomic<bool> showClocks;
 
     // Parser State
     uint8_t runningStatus;
